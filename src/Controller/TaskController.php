@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Task;
 use App\Form\TaskType;
 use App\Repository\TaskRepository;
+use App\Security\TaskVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,10 +19,43 @@ class TaskController extends AbstractController
     #[Route('/tasks', name: 'task_list')]
     public function list(TaskRepository $taskRepository): Response
     {
-        $tasks = $taskRepository->findByUser($this->getUser());
+        $user = $this->getUser();
+
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $tasks = $taskRepository->findAll();
+        } else {
+            $tasks = $taskRepository->findByUser($user);
+        }
 
         return $this->render('task/list.html.twig', [
             'tasks' => $tasks
+        ]);
+    }
+
+    #[Route('/tasks/done', name: 'task_list_done')]
+    public function listDone(TaskRepository $taskRepository): Response
+    {
+        $user = $this->getUser();
+
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $tasks = $taskRepository->createQueryBuilder('t')
+                ->where('t.isDone = true')
+                ->orderBy('t.createdAt', 'DESC')
+                ->getQuery()
+                ->getResult();
+        } else {
+            $tasks = $taskRepository->createQueryBuilder('t')
+                ->where('t.author = :user')
+                ->andWhere('t.isDone = true')
+                ->setParameter('user', $user)
+                ->orderBy('t.createdAt', 'DESC')
+                ->getQuery()
+                ->getResult();
+        }
+
+        return $this->render('task/list.html.twig', [
+            'tasks' => $tasks,
+            'page_title' => 'Tâches terminées'
         ]);
     }
 
@@ -52,9 +86,7 @@ class TaskController extends AbstractController
     #[Route('/tasks/{id}/edit', name: 'task_edit')]
     public function edit(Task $task, Request $request, EntityManagerInterface $em): Response
     {
-        if (!$task->belongsTo($this->getUser()) && !$this->isGranted('ROLE_ADMIN')) {
-            throw $this->createAccessDeniedException();
-        }
+        $this->denyAccessUnlessGranted(TaskVoter::EDIT, $task);
 
         $form = $this->createForm(TaskType::class, $task);
 
@@ -77,9 +109,7 @@ class TaskController extends AbstractController
     #[Route('/tasks/{id}/toggle', name: 'task_toggle')]
     public function toggle(Task $task, EntityManagerInterface $em): Response
     {
-        if (!$task->belongsTo($this->getUser()) && !$this->isGranted('ROLE_ADMIN')) {
-            throw $this->createAccessDeniedException();
-        }
+        $this->denyAccessUnlessGranted(TaskVoter::TOGGLE, $task);
 
         $task->toggle(!$task->isDone());
         $em->flush();
@@ -93,10 +123,7 @@ class TaskController extends AbstractController
     #[Route('/tasks/{id}/delete', name: 'task_delete')]
     public function delete(Task $task, EntityManagerInterface $em): Response
     {
-        $user = $this->getUser();
-        if (!$task->belongsTo($this->getUser()) && !($task->isAnonymous() && $this->isGranted('ROLE_ADMIN'))) {
-            throw $this->createAccessDeniedException();
-        }
+        $this->denyAccessUnlessGranted(TaskVoter::DELETE, $task);
 
         $em->remove($task);
         $em->flush();
