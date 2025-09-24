@@ -116,16 +116,6 @@ class Task
         return $this;
     }
 
-    public function belongsTo(User $user): bool
-    {
-        return $this->author && $this->author->getId() === $user->getId();
-    }
-
-    public function isAnonymous(): bool
-    {
-        return $this->author && $this->author->getUsername() === 'anonyme';
-    }
-
     public function __toString(): string
     {
         return $this->title ?? '';

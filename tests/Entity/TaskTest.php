@@ -76,34 +76,6 @@ class TaskTest extends TestCase
         $this->assertEquals($user, $task->getAuthor());
     }
 
-    public function testBelongsTo(): void
-    {
-        $task = new Task();
-        $user = new User();
-
-        $task->setAuthor($user);
-        $this->assertTrue($task->belongsTo($user));
-
-        $task->setAuthor(null);
-        $this->assertFalse($task->belongsTo($user));
-    }
-
-    public function testIsAnonymous(): void
-    {
-        $task = new Task();
-        $anonymousUser = new User();
-        $normalUser = new User();
-
-        $anonymousUser->setUsername('anonyme');
-        $normalUser->setUsername('testuser');
-
-        $task->setAuthor($anonymousUser);
-        $this->assertTrue($task->isAnonymous());
-
-        $task->setAuthor($normalUser);
-        $this->assertFalse($task->isAnonymous());
-    }
-
     public function testToString(): void
     {
         $task = new Task();

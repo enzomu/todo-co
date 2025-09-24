@@ -39,28 +39,38 @@ class TaskVoter extends Voter
 
     private function canEdit(Task $task, User $user): bool
     {
-        if ($task->belongsTo($user)) {
+        if ($this->isTaskOwner($task, $user)) {
             return true;
         }
 
-        return $user->hasRole('ROLE_ADMIN');
+        return $this->isAdmin($user);
     }
 
     private function canDelete(Task $task, User $user): bool
     {
-        if ($task->belongsTo($user)) {
+        if ($this->isTaskOwner($task, $user)) {
             return true;
         }
 
-        if ($user->hasRole('ROLE_ADMIN') && $this->isAnonymousTask($task)) {
+        if ($this->isAdmin($user) && $this->isAnonymousTask($task)) {
             return true;
         }
 
         return false;
     }
 
+    private function isTaskOwner(Task $task, User $user): bool
+    {
+        return $task->getAuthor() && $task->getAuthor()->getId() === $user->getId();
+    }
+
     private function isAnonymousTask(Task $task): bool
     {
         return $task->getAuthor() && $task->getAuthor()->getUsername() === 'anonyme';
+    }
+
+    private function isAdmin(User $user): bool
+    {
+        return $user->hasRole('ROLE_ADMIN');
     }
 }
